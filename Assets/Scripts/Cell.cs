@@ -15,19 +15,18 @@ public class Cell
     public Vector2Int GridPosition { get; }
     /// <summary>
     /// Объект, размещенный в этой ячейке (например, конвейер, здание).
+    /// Доступен для чтения извне, но устанавливается только внутри логики ячейки.
     /// </summary>
     private GameObject PlacedObject { get; set; }
     /// <summary>
     /// Возвращает true, если в ячейке размещен какой-либо объект.
     /// </summary>
     public bool IsOccupied => PlacedObject;
-
     public Cell(Vector3 worldPosition, Vector2Int gridPosition)
     {
         WorldPosition = worldPosition;
         GridPosition = gridPosition;
     }
-
     /// <summary>
     /// Устанавливает игровой объект в эту ячейку.
     /// </summary>

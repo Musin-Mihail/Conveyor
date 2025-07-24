@@ -15,6 +15,7 @@ public class GridInteraction : MonoBehaviour
     [Header("Ссылки")]
     [Tooltip("Ссылка на основную камеру. Если не указать, будет найдена автоматически")]
     public Camera mainCamera;
+    private GridGenerator _gridGenerator;
 
     private void Start()
     {
@@ -29,9 +30,19 @@ public class GridInteraction : MonoBehaviour
             }
         }
 
-        if (conveyorPrefab) return;
-        Debug.LogError("Префаб для размещения (conveyorPrefab) не назначен в инспекторе!");
-        enabled = false;
+        if (!conveyorPrefab)
+        {
+            Debug.LogError("Префаб для размещения (conveyorPrefab) не назначен в инспекторе!");
+            enabled = false;
+            return;
+        }
+
+        _gridGenerator = GridGenerator.Instance;
+        if (!_gridGenerator)
+        {
+            Debug.LogError("Экземпляр GridGenerator не найден на сцене!");
+            enabled = false;
+        }
     }
 
     private void Update()
@@ -44,40 +55,43 @@ public class GridInteraction : MonoBehaviour
 
     /// <summary>
     /// Обрабатывает клик мыши, определяет ячейку и размещает на ней объект, если она свободна.
+    /// Логика была переработана для использования публичных методов GridGenerator.
     /// </summary>
     private void HandleMouseClick()
     {
-        if (!conveyorPrefab || !mainCamera || GridGenerator.Instance == null)
-        {
-            return;
-        }
-
         var mouseScreenPos = Mouse.current.position.ReadValue();
         var mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
-        var gridGenerator = GridGenerator.Instance;
-        mouseWorldPos.z = 0;
-        var targetCell = gridGenerator.GetCell(mouseWorldPos);
+        var gridPosition = _gridGenerator.WorldToGridPosition(mouseWorldPos);
+        var targetCell = _gridGenerator.GetCell(gridPosition);
         if (targetCell == null)
         {
-            Debug.Log("Клик за пределами сетки.");
             return;
         }
 
         if (targetCell.IsOccupied)
         {
-            Debug.Log($"Ячейка ({targetCell.GridPosition.x}, {targetCell.GridPosition.y}) уже занята.");
+            Debug.Log($"Ячейка {targetCell.GridPosition} уже занята.");
             return;
         }
 
-        var spawnPosition = targetCell.WorldPosition;
+        PlaceObjectInCell(targetCell);
+    }
+
+    /// <summary>
+    /// Создает и размещает префаб в указанной ячейке.
+    /// </summary>
+    /// <param name="cell">Целевая ячейка для размещения.</param>
+    private void PlaceObjectInCell(Cell cell)
+    {
+        var spawnPosition = cell.WorldPosition;
         spawnPosition.z = placedObjectZOffset;
         var placedObject = Instantiate(
             conveyorPrefab,
             spawnPosition,
             Quaternion.identity,
-            gridGenerator.placedObjectsContainer
+            _gridGenerator.placedObjectsContainer
         );
-        targetCell.SetPlacedObject(placedObject);
-        Debug.Log($"Размещен объект на ячейке: ({targetCell.GridPosition.x}, {targetCell.GridPosition.y})");
+        cell.SetPlacedObject(placedObject);
+        Debug.Log($"Размещен объект на ячейке: {cell.GridPosition}");
     }
 }

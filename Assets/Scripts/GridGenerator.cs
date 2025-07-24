@@ -25,12 +25,13 @@ public class GridGenerator : MonoBehaviour
     public static GridGenerator Instance { get; private set; }
     /// <summary>
     /// Двумерный массив, хранящий данные всех ячеек сетки.
+    /// Доступен для чтения другим системам.
     /// </summary>
-    private Cell[,] _cellGrid;
+    private Cell[,] CellGrid { get; set; }
 
     private void Awake()
     {
-        if (Instance && Instance != this)
+        if (Instance != null && Instance != this)
         {
             Debug.LogWarning("Обнаружен еще один экземпляр GridGenerator. Новый экземпляр будет удален.");
             Destroy(gameObject);
@@ -53,7 +54,7 @@ public class GridGenerator : MonoBehaviour
     /// </summary>
     private void GenerateGrid()
     {
-        _cellGrid = new Cell[gridWidth, gridHeight];
+        CellGrid = new Cell[gridWidth, gridHeight];
         if (!placedObjectsContainer)
         {
             placedObjectsContainer = new GameObject("PlacedObjectsContainer").transform;
@@ -64,8 +65,8 @@ public class GridGenerator : MonoBehaviour
         {
             for (var y = 0; y < gridHeight; y++)
             {
-                var cellPosition = new Vector3(x * cellSize, y * cellSize, 0);
-                _cellGrid[x, y] = new Cell(cellPosition, new Vector2Int(x, y));
+                var cellPosition = new Vector3(x * cellSize + cellSize * 0.5f, y * cellSize + cellSize * 0.5f, 0);
+                CellGrid[x, y] = new Cell(cellPosition, new Vector2Int(x, y));
             }
         }
 
@@ -102,14 +103,15 @@ public class GridGenerator : MonoBehaviour
         {
             for (var y = 0; y < gridHeight; y++)
             {
-                var index = y * gridWidth + x; // Исправлен порядок индекса для соответствия циклам
+                var index = y * gridWidth + x;
                 var vIndex = index * 4;
                 var tIndex = index * 6;
-                var center = _cellGrid[x, y].WorldPosition;
-                vertices[vIndex + 0] = new Vector3(center.x - cellSize * 0.5f, center.y - cellSize * 0.5f, 0);
-                vertices[vIndex + 1] = new Vector3(center.x - cellSize * 0.5f, center.y + cellSize * 0.5f, 0);
-                vertices[vIndex + 2] = new Vector3(center.x + cellSize * 0.5f, center.y + cellSize * 0.5f, 0);
-                vertices[vIndex + 3] = new Vector3(center.x + cellSize * 0.5f, center.y - cellSize * 0.5f, 0);
+                var center = CellGrid[x, y].WorldPosition;
+                var halfSize = cellSize * 0.5f;
+                vertices[vIndex + 0] = new Vector3(center.x - halfSize, center.y - halfSize, 0);
+                vertices[vIndex + 1] = new Vector3(center.x - halfSize, center.y + halfSize, 0);
+                vertices[vIndex + 2] = new Vector3(center.x + halfSize, center.y + halfSize, 0);
+                vertices[vIndex + 3] = new Vector3(center.x + halfSize, center.y - halfSize, 0);
                 uvs[vIndex + 0] = new Vector2(0, 0);
                 uvs[vIndex + 1] = new Vector2(0, 1);
                 uvs[vIndex + 2] = new Vector2(1, 1);
@@ -132,14 +134,13 @@ public class GridGenerator : MonoBehaviour
 
     /// <summary>
     /// Преобразует мировую позицию в координаты ячейки на сетке.
-    /// ИСПОЛЬЗУЕТ ОКРУГЛЕНИЕ К БЛИЖАЙШЕМУ ЦЕЛОМУ.
     /// </summary>
     /// <param name="worldPosition">Позиция в мировых координатах.</param>
     /// <returns>Координаты ячейки (x, y) в виде Vector2Int.</returns>
-    private Vector2Int WorldToGridPosition(Vector3 worldPosition)
+    public Vector2Int WorldToGridPosition(Vector3 worldPosition)
     {
-        var x = Mathf.RoundToInt(worldPosition.x / cellSize);
-        var y = Mathf.RoundToInt(worldPosition.y / cellSize);
+        var x = Mathf.FloorToInt(worldPosition.x / cellSize);
+        var y = Mathf.FloorToInt(worldPosition.y / cellSize);
         return new Vector2Int(x, y);
     }
 
@@ -155,23 +156,12 @@ public class GridGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Возвращает объект ячейки по ее координатам.
+    /// Возвращает объект ячейки по ее координатам в сетке.
     /// </summary>
     /// <param name="gridPosition">Координаты ячейки.</param>
     /// <returns>Объект Cell или null, если координаты вне сетки.</returns>
-    private Cell GetCell(Vector2Int gridPosition)
+    public Cell GetCell(Vector2Int gridPosition)
     {
-        return !IsValidGridPosition(gridPosition) ? null : _cellGrid[gridPosition.x, gridPosition.y];
-    }
-
-    /// <summary>
-    /// Возвращает объект ячейки по мировой позиции.
-    /// </summary>
-    /// <param name="worldPosition">Мировая позиция.</param>
-    /// <returns>Объект Cell или null, если позиция вне сетки.</returns>
-    public Cell GetCell(Vector3 worldPosition)
-    {
-        var gridPosition = WorldToGridPosition(worldPosition);
-        return GetCell(gridPosition);
+        return !IsValidGridPosition(gridPosition) ? null : CellGrid[gridPosition.x, gridPosition.y];
     }
 }
