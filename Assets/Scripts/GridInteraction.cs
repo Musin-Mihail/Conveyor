@@ -15,6 +15,11 @@ public class GridInteraction : MonoBehaviour
     public GameObject conveyorPrefab;
     [Tooltip("Смещение по оси Z для размещаемых объектов, чтобы они были видны над сеткой.")]
     [SerializeField] private float placedObjectZOffset = -0.1f;
+
+    [Header("Настройки логики")]
+    [Tooltip("Если включено, запрещает изменять соседние конвейеры, если они уже были изменены ранее другим соседом.")]
+    public bool lockModifiedNeighbors;
+
     [Header("Ссылки")]
     [Tooltip("Ссылка на основную камеру. Если не указать, будет найдена автоматически")]
     public Camera mainCamera;
@@ -107,14 +112,34 @@ public class GridInteraction : MonoBehaviour
     /// <summary>
     /// Обновляет ориентацию конвейера в указанной ячейке и всех ее соседних конвейеров.
     /// Это гарантирует, что все конвейеры в области правильно соединены.
+    /// Включает новую логику блокировки изменений для соседей.
     /// </summary>
     /// <param name="centerCell">Ячейка, вокруг которой нужно произвести обновление.</param>
     private void UpdateSurroundingConveyors(Cell centerCell)
     {
-        UpdateSingleConveyorOrientation(centerCell);
-        foreach (var neighborCell in _gridGenerator.GetNeighbors(centerCell).Where(neighborCell => neighborCell.IsOccupied))
+        UpdateSingleConveyorOrientation(centerCell, true);
+
+        foreach (var neighborCell in _gridGenerator.GetNeighbors(centerCell).Where(nc => nc.IsOccupied))
         {
-            UpdateSingleConveyorOrientation(neighborCell);
+            var neighborConveyor = neighborCell.GetConveyor();
+            if (!neighborConveyor) continue;
+
+            if (lockModifiedNeighbors)
+            {
+                if (neighborConveyor.WasModifiedByNeighbor)
+                {
+                    Debug.Log($"Обновление конвейера в {neighborCell.GridPosition} пропущено, так как он заблокирован.");
+                    continue;
+                }
+
+                UpdateSingleConveyorOrientation(neighborCell, false);
+                neighborConveyor.MarkAsModifiedByNeighbor();
+                Debug.Log($"Конвейер в {neighborCell.GridPosition} обновлен и теперь помечен как измененный соседом.");
+            }
+            else
+            {
+                UpdateSingleConveyorOrientation(neighborCell, false);
+            }
         }
     }
 
@@ -123,7 +148,8 @@ public class GridInteraction : MonoBehaviour
     /// и передает ее в компонент Conveyor для обновления его внешнего вида.
     /// </summary>
     /// <param name="cell">Ячейка с конвейером для обновления.</param>
-    private void UpdateSingleConveyorOrientation(Cell cell)
+    /// <param name="isNewlyPlaced">Указывает, является ли этот конвейер только что размещенным.</param>
+    private void UpdateSingleConveyorOrientation(Cell cell, bool isNewlyPlaced)
     {
         var conveyor = cell.GetConveyor();
         if (!conveyor) return;
@@ -132,10 +158,24 @@ public class GridInteraction : MonoBehaviour
         foreach (var (flag, offset) in ConveyorDirections.DirectionVectors)
         {
             var neighborCell = _gridGenerator.GetCell(gridPos + offset);
-            if (neighborCell is { IsOccupied: true })
+            if (neighborCell?.IsOccupied != true) continue;
+            var neighborConveyor = neighborCell.GetConveyor();
+            if (!neighborConveyor) continue;
+            if (lockModifiedNeighbors && neighborConveyor.WasModifiedByNeighbor)
             {
-                connectionMask |= flag;
+                if (isNewlyPlaced)
+                {
+                    continue;
+                }
+
+                var oppositeDirection = ConveyorDirections.GetOppositeDirection(flag);
+                if ((neighborConveyor.ConnectionMask & (int)oppositeDirection) == 0)
+                {
+                    continue;
+                }
             }
+
+            connectionMask |= flag;
         }
 
         conveyor.UpdateState((int)connectionMask);

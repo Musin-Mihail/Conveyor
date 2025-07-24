@@ -33,4 +33,21 @@ public static class ConveyorDirections
         [DirectionFlags.Left] = Vector2Int.left,
         [DirectionFlags.Right] = Vector2Int.right
     };
+
+    /// <summary>
+    /// Возвращает противоположное направление для заданного.
+    /// </summary>
+    /// <param name="direction">Исходное направление.</param>
+    /// <returns>Противоположное направление.</returns>
+    public static DirectionFlags GetOppositeDirection(DirectionFlags direction)
+    {
+        return direction switch
+        {
+            DirectionFlags.Up => DirectionFlags.Down,
+            DirectionFlags.Down => DirectionFlags.Up,
+            DirectionFlags.Left => DirectionFlags.Right,
+            DirectionFlags.Right => DirectionFlags.Left,
+            _ => DirectionFlags.None
+        };
+    }
 }

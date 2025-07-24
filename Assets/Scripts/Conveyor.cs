@@ -24,6 +24,19 @@ public class Conveyor : MonoBehaviour
     private Dictionary<int, ConveyorType> _conveyorTypes;
 
     /// <summary>
+    /// Флаг, который указывает, был ли этот конвейер изменен
+    /// в результате размещения соседнего конвейера.
+    /// Используется для опциональной блокировки изменений.
+    /// </summary>
+    public bool WasModifiedByNeighbor { get; private set; }
+
+    /// <summary>
+    /// Хранит последнюю примененную маску соединений.
+    /// Это позволяет другим конвейерам проверять, в какие стороны открыт данный конвейер.
+    /// </summary>
+    public int ConnectionMask { get; private set; }
+
+    /// <summary>
     /// Структура для хранения данных о типе конвейера: спрайт и угол поворота.
     /// </summary>
     private struct ConveyorType
@@ -83,11 +96,20 @@ public class Conveyor : MonoBehaviour
     }
 
     /// <summary>
+    /// Помечает этот конвейер как измененный соседом.
+    /// </summary>
+    public void MarkAsModifiedByNeighbor()
+    {
+        WasModifiedByNeighbor = true;
+    }
+
+    /// <summary>
     /// Обновляет внешний вид конвейера на основе маски его соединений.
     /// </summary>
     /// <param name="connectionMask">Битовуя маска, представляющая соединения с соседями.</param>
     public void UpdateState(int connectionMask)
     {
+        ConnectionMask = connectionMask;
         if (_conveyorTypes.TryGetValue(connectionMask, out var type))
         {
             _spriteRenderer.sprite = type.Sprite;
