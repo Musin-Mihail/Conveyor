@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
@@ -37,12 +39,17 @@ public class GridInteraction : MonoBehaviour
             return;
         }
 
-        _gridGenerator = GridGenerator.Instance;
-        if (!_gridGenerator)
+        if (conveyorPrefab.GetComponent<Conveyor>() == null)
         {
-            Debug.LogError("Экземпляр GridGenerator не найден на сцене!");
+            Debug.LogError("На префабе 'conveyorPrefab' отсутствует компонент 'Conveyor'! Добавьте его.");
             enabled = false;
+            return;
         }
+
+        _gridGenerator = GridGenerator.Instance;
+        if (_gridGenerator) return;
+        Debug.LogError("Экземпляр GridGenerator не найден на сцене!");
+        enabled = false;
     }
 
     private void Update()
@@ -55,7 +62,6 @@ public class GridInteraction : MonoBehaviour
 
     /// <summary>
     /// Обрабатывает клик мыши, определяет ячейку и размещает на ней объект, если она свободна.
-    /// Логика была переработана для использования публичных методов GridGenerator.
     /// </summary>
     private void HandleMouseClick()
     {
@@ -78,7 +84,8 @@ public class GridInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// Создает и размещает префаб в указанной ячейке.
+    /// ИЗМЕНЕНО: Создает, размещает и автоматически поворачивает префаб в указанной ячейке.
+    /// Если рядом есть один соседний конвейер, они поворачиваются друг к другу.
     /// </summary>
     /// <param name="cell">Целевая ячейка для размещения.</param>
     private void PlaceObjectInCell(Cell cell)
@@ -92,6 +99,43 @@ public class GridInteraction : MonoBehaviour
             _gridGenerator.placedObjectsContainer
         );
         cell.SetPlacedObject(placedObject);
-        Debug.Log($"Размещен объект на ячейке: {cell.GridPosition}");
+        var newConveyor = placedObject.GetComponent<Conveyor>();
+        var neighbors = _gridGenerator.GetNeighbors(cell);
+        var neighborConveyors = (from neighborCell in neighbors let neighborConveyor = neighborCell.GetConveyor() where neighborConveyor select new KeyValuePair<Cell, Conveyor>(neighborCell, neighborConveyor)).ToList();
+        if (neighborConveyors.Count == 1)
+        {
+            var (neighborCell, neighborConveyor) = neighborConveyors[0];
+            var directionToNeighborVector = neighborCell.GridPosition - cell.GridPosition;
+            var directionToNeighbor = GetDirectionFromVector(directionToNeighborVector);
+            if (directionToNeighbor != Conveyor.Direction.None)
+            {
+                newConveyor.SetRotation(directionToNeighbor);
+            }
+
+            var directionToNewVector = cell.GridPosition - neighborCell.GridPosition;
+            var directionToNew = GetDirectionFromVector(directionToNewVector);
+            if (directionToNew != Conveyor.Direction.None)
+            {
+                neighborConveyor.SetRotation(directionToNew);
+            }
+
+            Debug.Log($"Конвейер на {cell.GridPosition} соединен с конвейером на {neighborCell.GridPosition}.");
+        }
+        else
+        {
+            newConveyor.SetRotation(Conveyor.Direction.Up);
+            Debug.Log($"Размещен конвейер на {cell.GridPosition}. Подходящих соседей: {neighborConveyors.Count}. Установлено направление по умолчанию.");
+        }
+    }
+
+    /// <summary>
+    /// Преобразует вектор направления в перечисление Conveyor.Direction.
+    /// </summary>
+    private Conveyor.Direction GetDirectionFromVector(Vector2Int vector)
+    {
+        if (vector == Vector2Int.up) return Conveyor.Direction.Up;
+        if (vector == Vector2Int.down) return Conveyor.Direction.Down;
+        if (vector == Vector2Int.left) return Conveyor.Direction.Left;
+        return vector == Vector2Int.right ? Conveyor.Direction.Right : Conveyor.Direction.None;
     }
 }

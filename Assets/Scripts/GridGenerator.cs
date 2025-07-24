@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -169,5 +171,23 @@ public class GridGenerator : MonoBehaviour
     public Cell GetCell(Vector2Int gridPosition)
     {
         return !IsValidGridPosition(gridPosition) ? null : CellGrid[gridPosition.x, gridPosition.y];
+    }
+
+    /// <summary>
+    /// НОВОЕ: Возвращает список соседних ячеек для указанной ячейки.
+    /// </summary>
+    /// <param name="cell">Ячейка, для которой нужно найти соседей.</param>
+    /// <returns>Список соседних ячеек.</returns>
+    public List<Cell> GetNeighbors(Cell cell)
+    {
+        var directions = new[]
+        {
+            Vector2Int.up,
+            Vector2Int.down,
+            Vector2Int.left,
+            Vector2Int.right
+        };
+
+        return directions.Select(dir => cell.GridPosition + dir).Select(GetCell).Where(neighborCell => neighborCell != null).ToList();
     }
 }
