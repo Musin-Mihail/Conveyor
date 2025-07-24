@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Этот скрипт создает сетку из префабов в сцене Unity.
+/// Этот скрипт создает сетку из префабов и хранит ссылки на них.
 /// </summary>
 public class GridGenerator : MonoBehaviour
 {
@@ -13,14 +13,16 @@ public class GridGenerator : MonoBehaviour
     [Tooltip("Размер каждой ячейки")]
     public float cellSize = 1.0f;
     [Header("Префаб")]
-    [Tooltip("Префаб, который будет использоваться для каждой ячейки сетки")]
+    [Tooltip("Префаб, который будет использоваться для каждой ячейки сетки (земля)")]
     public GameObject cellPrefab;
+    public static GameObject[,] Grid;
+    public static float CellSize { get; private set; }
 
-    private void Start()
+    private void Awake()
     {
         if (!cellPrefab)
         {
-            Debug.LogError("Ошибка: Префаб ячейки (Cell Prefab) не назначен в инспекторе!");
+            Debug.LogError("Ошибка: Префаб ячейки (cellPrefab) не назначен в инспекторе!");
             return;
         }
 
@@ -32,6 +34,8 @@ public class GridGenerator : MonoBehaviour
     /// </summary>
     private void GenerateGrid()
     {
+        Grid = new GameObject[gridWidth, gridHeight];
+        CellSize = cellSize;
         var gridContainer = new GameObject("GridContainer")
         {
             transform =
@@ -39,7 +43,6 @@ public class GridGenerator : MonoBehaviour
                 parent = transform
             }
         };
-
         for (var x = 0; x < gridWidth; x++)
         {
             for (var y = 0; y < gridHeight; y++)
@@ -48,6 +51,7 @@ public class GridGenerator : MonoBehaviour
                 var newCell = Instantiate(cellPrefab, cellPosition, Quaternion.identity);
                 newCell.name = $"Cell_{x}_{y}";
                 newCell.transform.parent = gridContainer.transform;
+                Grid[x, y] = newCell;
             }
         }
 
