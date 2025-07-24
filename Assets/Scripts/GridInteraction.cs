@@ -61,6 +61,13 @@ public class GridInteraction : MonoBehaviour
         }
 
         var targetCell = GridGenerator.Grid[x, y];
+
+        if (targetCell.transform.childCount > 0)
+        {
+            Debug.Log($"Ячейка ({x}, {y}) уже занята.");
+            return;
+        }
+
         var overlayObject = Instantiate(overlayPrefab, targetCell.transform.position, Quaternion.identity, targetCell.transform);
         overlayObject.transform.localPosition = new Vector3(0, 0, -0.1f);
         Debug.Log($"Размещен объект на ячейке: ({x}, {y})");
