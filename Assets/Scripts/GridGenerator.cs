@@ -28,10 +28,11 @@ public class GridGenerator : MonoBehaviour
     /// Доступен для чтения другим системам.
     /// </summary>
     private Cell[,] CellGrid { get; set; }
+    private Vector3 _gridOffset;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance && Instance != this)
         {
             Debug.LogWarning("Обнаружен еще один экземпляр GridGenerator. Новый экземпляр будет удален.");
             Destroy(gameObject);
@@ -61,17 +62,18 @@ public class GridGenerator : MonoBehaviour
             placedObjectsContainer.parent = transform;
         }
 
+        _gridOffset = new Vector3(gridWidth * cellSize * 0.5f, gridHeight * cellSize * 0.5f, 0);
         for (var x = 0; x < gridWidth; x++)
         {
             for (var y = 0; y < gridHeight; y++)
             {
-                var cellPosition = new Vector3(x * cellSize + cellSize * 0.5f, y * cellSize + cellSize * 0.5f, 0);
+                var cellPosition = new Vector3(x * cellSize, y * cellSize, 0) - _gridOffset + new Vector3(cellSize, cellSize, 0) * 0.5f;
                 CellGrid[x, y] = new Cell(cellPosition, new Vector2Int(x, y));
             }
         }
 
         GenerateGridMesh();
-        Debug.Log($"Сетка размером {gridWidth}x{gridHeight} успешно создана!");
+        Debug.Log($"Сетка размером {gridWidth}x{gridHeight} успешно создана и центрирована!");
     }
 
     /// <summary>
@@ -93,12 +95,11 @@ public class GridGenerator : MonoBehaviour
         {
             name = "Procedural Grid"
         };
-
         var quadCount = gridWidth * gridHeight;
         var vertices = new Vector3[quadCount * 4];
         var uvs = new Vector2[quadCount * 4];
         var triangles = new int[quadCount * 6];
-
+        gridMeshObject.transform.position = -_gridOffset;
         for (var x = 0; x < gridWidth; x++)
         {
             for (var y = 0; y < gridHeight; y++)
@@ -106,16 +107,20 @@ public class GridGenerator : MonoBehaviour
                 var index = y * gridWidth + x;
                 var vIndex = index * 4;
                 var tIndex = index * 6;
-                var center = CellGrid[x, y].WorldPosition;
+
+                var center = new Vector3(x * cellSize + cellSize * 0.5f, y * cellSize + cellSize * 0.5f, 0);
                 var halfSize = cellSize * 0.5f;
+
                 vertices[vIndex + 0] = new Vector3(center.x - halfSize, center.y - halfSize, 0);
                 vertices[vIndex + 1] = new Vector3(center.x - halfSize, center.y + halfSize, 0);
                 vertices[vIndex + 2] = new Vector3(center.x + halfSize, center.y + halfSize, 0);
                 vertices[vIndex + 3] = new Vector3(center.x + halfSize, center.y - halfSize, 0);
+
                 uvs[vIndex + 0] = new Vector2(0, 0);
                 uvs[vIndex + 1] = new Vector2(0, 1);
                 uvs[vIndex + 2] = new Vector2(1, 1);
                 uvs[vIndex + 3] = new Vector2(1, 0);
+
                 triangles[tIndex + 0] = vIndex + 0;
                 triangles[tIndex + 1] = vIndex + 1;
                 triangles[tIndex + 2] = vIndex + 2;
@@ -139,8 +144,9 @@ public class GridGenerator : MonoBehaviour
     /// <returns>Координаты ячейки (x, y) в виде Vector2Int.</returns>
     public Vector2Int WorldToGridPosition(Vector3 worldPosition)
     {
-        var x = Mathf.FloorToInt(worldPosition.x / cellSize);
-        var y = Mathf.FloorToInt(worldPosition.y / cellSize);
+        var localPos = worldPosition + _gridOffset;
+        var x = Mathf.FloorToInt(localPos.x / cellSize);
+        var y = Mathf.FloorToInt(localPos.y / cellSize);
         return new Vector2Int(x, y);
     }
 
