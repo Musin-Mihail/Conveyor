@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -84,8 +83,8 @@ public class GridInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// ИЗМЕНЕНО: Создает, размещает и автоматически поворачивает префаб в указанной ячейке.
-    /// Если рядом есть один соседний конвейер, они поворачиваются друг к другу.
+    /// Создает, размещает объект в ячейке и обновляет ориентацию
+    /// нового конвейера и его соседей для автоматического соединения.
     /// </summary>
     /// <param name="cell">Целевая ячейка для размещения.</param>
     private void PlaceObjectInCell(Cell cell)
@@ -99,33 +98,106 @@ public class GridInteraction : MonoBehaviour
             _gridGenerator.placedObjectsContainer
         );
         cell.SetPlacedObject(placedObject);
-        var newConveyor = placedObject.GetComponent<Conveyor>();
-        var neighbors = _gridGenerator.GetNeighbors(cell);
-        var neighborConveyors = (from neighborCell in neighbors let neighborConveyor = neighborCell.GetConveyor() where neighborConveyor select new KeyValuePair<Cell, Conveyor>(neighborCell, neighborConveyor)).ToList();
-        if (neighborConveyors.Count == 1)
-        {
-            var (neighborCell, neighborConveyor) = neighborConveyors[0];
-            var directionToNeighborVector = neighborCell.GridPosition - cell.GridPosition;
-            var directionToNeighbor = GetDirectionFromVector(directionToNeighborVector);
-            if (directionToNeighbor != Conveyor.Direction.None)
-            {
-                newConveyor.SetRotation(directionToNeighbor);
-            }
+        Debug.Log($"Размещен конвейер на {cell.GridPosition}. Запускается обновление соседей.");
+        UpdateSurroundingConveyors(cell);
+    }
 
-            var directionToNewVector = cell.GridPosition - neighborCell.GridPosition;
-            var directionToNew = GetDirectionFromVector(directionToNewVector);
-            if (directionToNew != Conveyor.Direction.None)
-            {
-                neighborConveyor.SetRotation(directionToNew);
-            }
-
-            Debug.Log($"Конвейер на {cell.GridPosition} соединен с конвейером на {neighborCell.GridPosition}.");
-        }
-        else
+    /// <summary>
+    /// Обновляет ориентацию конвейера в указанной ячейке и всех ее соседних конвейеров.
+    /// Это гарантирует, что все конвейеры в области правильно соединены.
+    /// </summary>
+    /// <param name="centerCell">Ячейка, вокруг которой нужно произвести обновление.</param>
+    private void UpdateSurroundingConveyors(Cell centerCell)
+    {
+        if (centerCell.IsOccupied)
         {
-            newConveyor.SetRotation(Conveyor.Direction.Up);
-            Debug.Log($"Размещен конвейер на {cell.GridPosition}. Подходящих соседей: {neighborConveyors.Count}. Установлено направление по умолчанию.");
+            UpdateSingleConveyorOrientation(centerCell);
         }
+
+        foreach (var neighborCell in _gridGenerator.GetNeighbors(centerCell).Where(neighborCell => neighborCell.IsOccupied))
+        {
+            UpdateSingleConveyorOrientation(neighborCell);
+        }
+    }
+
+    /// <summary>
+    /// Определяет и устанавливает правильную ориентацию для одного конвейера
+    /// на основе его текущих соседей.
+    /// </summary>
+    /// <param name="cell">Ячейка с конвейером для обновления.</param>
+    private void UpdateSingleConveyorOrientation(Cell cell)
+    {
+        var conveyor = cell.GetConveyor();
+        if (!conveyor) return;
+        var neighborConveyors = _gridGenerator.GetNeighbors(cell)
+            .Where(c => c.IsOccupied && c.GetConveyor())
+            .ToList();
+        switch (neighborConveyors.Count)
+        {
+            case 0:
+                conveyor.SetStraight(Conveyor.Direction.Up);
+                return;
+            case 1:
+            {
+                var directionVector = neighborConveyors[0].GridPosition - cell.GridPosition;
+                conveyor.SetStraight(GetDirectionFromVector(directionVector));
+                return;
+            }
+            case 2:
+            {
+                var dirToFirst = neighborConveyors[0].GridPosition - cell.GridPosition;
+                var dirToSecond = neighborConveyors[1].GridPosition - cell.GridPosition;
+
+                if (dirToFirst == -dirToSecond)
+                {
+                    conveyor.SetStraight(GetDirectionFromVector(dirToFirst));
+                }
+                else
+                {
+                    conveyor.SetCorner(GetAngleForCorner(dirToFirst, dirToSecond));
+                }
+
+                return;
+            }
+            default:
+                // 3 или 4 соседа. Это перекресток, который мы пока не обрабатываем.
+                // Ставим прямой конвейер по умолчанию.
+                conveyor.SetStraight(Conveyor.Direction.Up);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// НОВОЕ: Вычисляет угол поворота для углового конвейера на основе векторов к его двум соседям.
+    /// </summary>
+    /// <param name="dir1">Вектор направления к первому соседу.</param>
+    /// <param name="dir2">Вектор направления ко второму соседу.</param>
+    /// <returns>Угол в градусах для поворота спрайта.</returns>
+    private float GetAngleForCorner(Vector2Int dir1, Vector2Int dir2)
+    {
+        var cornerDirection = dir1 + dir2;
+        if (cornerDirection == new Vector2Int(1, 1))
+        {
+            return 0;
+        }
+
+        if (cornerDirection == new Vector2Int(1, -1))
+        {
+            return -90;
+        }
+
+        if (cornerDirection == new Vector2Int(-1, -1))
+        {
+            return 180;
+        }
+
+        if (cornerDirection == new Vector2Int(-1, 1))
+        {
+            return 90;
+        }
+
+        Debug.LogWarning($"Не удалось определить угол для направлений {dir1} и {dir2}");
+        return 0;
     }
 
     /// <summary>
@@ -136,6 +208,7 @@ public class GridInteraction : MonoBehaviour
         if (vector == Vector2Int.up) return Conveyor.Direction.Up;
         if (vector == Vector2Int.down) return Conveyor.Direction.Down;
         if (vector == Vector2Int.left) return Conveyor.Direction.Left;
-        return vector == Vector2Int.right ? Conveyor.Direction.Right : Conveyor.Direction.None;
+        if (vector == Vector2Int.right) return Conveyor.Direction.Right;
+        return Conveyor.Direction.None;
     }
 }
