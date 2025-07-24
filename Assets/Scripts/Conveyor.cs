@@ -22,6 +22,8 @@ public class Conveyor : MonoBehaviour
     public Sprite straightSprite;
     [Tooltip("Спрайт для углового конвейера. Базовая ориентация - соединяет Вверх и Вправо.")]
     public Sprite cornerSprite;
+    [Tooltip("Спрайт для Т-образного конвейера. Базовая ориентация - открыт Вверх, Влево и Вправо.")]
+    public Sprite tJunctionSprite;
     private SpriteRenderer _spriteRenderer;
 
     private void Awake()
@@ -44,7 +46,7 @@ public class Conveyor : MonoBehaviour
     }
 
     /// <summary>
-    /// НОВОЕ: Устанавливает тип конвейера (угловой) и поворачивает его на заданный угол.
+    /// Устанавливает тип конвейера (угловой) и поворачивает его на заданный угол.
     /// </summary>
     /// <param name="angle">Угол поворота в градусах.</param>
     public void SetCorner(float angle)
@@ -56,6 +58,21 @@ public class Conveyor : MonoBehaviour
 
         transform.rotation = Quaternion.Euler(0, 0, angle);
     }
+
+    /// <summary>
+    /// Устанавливает тип конвейера (Т-образный) и поворачивает его на заданный угол.
+    /// </summary>
+    /// <param name="angle">Угол поворота в градусах.</param>
+    public void SetTJunction(float angle)
+    {
+        if (_spriteRenderer.sprite != tJunctionSprite)
+        {
+            _spriteRenderer.sprite = tJunctionSprite;
+        }
+
+        transform.rotation = Quaternion.Euler(0, 0, angle);
+    }
+
 
     /// <summary>
     /// Возвращает угол поворота в градусах для указанного направления (для прямых конвейеров).

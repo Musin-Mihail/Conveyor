@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -129,19 +130,21 @@ public class GridInteraction : MonoBehaviour
     {
         var conveyor = cell.GetConveyor();
         if (!conveyor) return;
+
         var neighborConveyors = _gridGenerator.GetNeighbors(cell)
             .Where(c => c.IsOccupied && c.GetConveyor())
             .ToList();
+
         switch (neighborConveyors.Count)
         {
             case 0:
                 conveyor.SetStraight(Conveyor.Direction.Up);
-                return;
+                break;
             case 1:
             {
                 var directionVector = neighborConveyors[0].GridPosition - cell.GridPosition;
                 conveyor.SetStraight(GetDirectionFromVector(directionVector));
-                return;
+                break;
             }
             case 2:
             {
@@ -157,18 +160,49 @@ public class GridInteraction : MonoBehaviour
                     conveyor.SetCorner(GetAngleForCorner(dirToFirst, dirToSecond));
                 }
 
-                return;
+                break;
             }
+            case 3:
+            {
+                var angle = GetAngleForTJunction(neighborConveyors, cell);
+                conveyor.SetTJunction(angle);
+                break;
+            }
+            // TODO: Добавить логику для 4 соседей (крестовина)
             default:
-                // 3 или 4 соседа. Это перекресток, который мы пока не обрабатываем.
-                // Ставим прямой конвейер по умолчанию.
                 conveyor.SetStraight(Conveyor.Direction.Up);
                 break;
         }
     }
 
     /// <summary>
-    /// НОВОЕ: Вычисляет угол поворота для углового конвейера на основе векторов к его двум соседям.
+    /// Вычисляет угол для Т-образного конвейера.
+    /// Находит единственное направление, где нет соседа, и поворачивает "открытую" часть конвейера туда.
+    /// </summary>
+    /// <param name="neighbors">Список из трех соседних ячеек с конвейерами.</param>
+    /// <param name="center">Центральная ячейка, для которой вычисляется поворот.</param>
+    /// <returns>Угол поворота в градусах.</returns>
+    private float GetAngleForTJunction(List<Cell> neighbors, Cell center)
+    {
+        var neighborDirections = neighbors.Select(n => n.GridPosition - center.GridPosition).ToList();
+
+        var allDirections = new List<Vector2Int>
+        {
+            Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right
+        };
+
+        var missingDirection = allDirections.FirstOrDefault(dir => !neighborDirections.Contains(dir));
+
+        if (missingDirection == Vector2Int.up) return 180f;
+        if (missingDirection == Vector2Int.down) return 0f;
+        if (missingDirection == Vector2Int.left) return 90f;
+        if (missingDirection == Vector2Int.right) return -90f;
+
+        return 0f;
+    }
+
+    /// <summary>
+    /// Вычисляет угол поворота для углового конвейера на основе векторов к его двум соседям.
     /// </summary>
     /// <param name="dir1">Вектор направления к первому соседу.</param>
     /// <param name="dir2">Вектор направления ко второму соседу.</param>
@@ -176,26 +210,10 @@ public class GridInteraction : MonoBehaviour
     private float GetAngleForCorner(Vector2Int dir1, Vector2Int dir2)
     {
         var cornerDirection = dir1 + dir2;
-        if (cornerDirection == new Vector2Int(1, 1))
-        {
-            return 0;
-        }
-
-        if (cornerDirection == new Vector2Int(1, -1))
-        {
-            return -90;
-        }
-
-        if (cornerDirection == new Vector2Int(-1, -1))
-        {
-            return 180;
-        }
-
-        if (cornerDirection == new Vector2Int(-1, 1))
-        {
-            return 90;
-        }
-
+        if (cornerDirection == new Vector2Int(1, 1)) return 0;
+        if (cornerDirection == new Vector2Int(1, -1)) return -90;
+        if (cornerDirection == new Vector2Int(-1, -1)) return 180;
+        if (cornerDirection == new Vector2Int(-1, 1)) return 90;
         Debug.LogWarning($"Не удалось определить угол для направлений {dir1} и {dir2}");
         return 0;
     }

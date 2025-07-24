@@ -102,3 +102,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   straightSprite: {fileID: 21300000, guid: 86ddf4f64a0e17246936f6e2f571c8f7, type: 3}
   cornerSprite: {fileID: 21300000, guid: f3ae60d241ef2304193fbab216e61950, type: 3}
+  tJunctionSprite: {fileID: 21300000, guid: 71adad17590f5f8479e0c395c0cd8775, type: 3}
