@@ -7,9 +7,12 @@ using UnityEngine.InputSystem;
 /// </summary>
 public class GridInteraction : MonoBehaviour
 {
-    [Header("Настройки")]
+    [Header("Настройки размещения")]
     [Tooltip("Префаб объекта, который будет размещаться на ячейке")]
     public GameObject conveyorPrefab;
+    [Tooltip("Смещение по оси Z для размещаемых объектов, чтобы они были видны над сеткой.")]
+    [SerializeField] private float placedObjectZOffset = -0.1f;
+    [Header("Ссылки")]
     [Tooltip("Ссылка на основную камеру. Если не указать, будет найдена автоматически")]
     public Camera mainCamera;
 
@@ -27,7 +30,7 @@ public class GridInteraction : MonoBehaviour
         }
 
         if (conveyorPrefab) return;
-        Debug.LogError("Префаб для наложения (conveyorPrefab) не назначен в инспекторе!");
+        Debug.LogError("Префаб для размещения (conveyorPrefab) не назначен в инспекторе!");
         enabled = false;
     }
 
@@ -44,7 +47,7 @@ public class GridInteraction : MonoBehaviour
     /// </summary>
     private void HandleMouseClick()
     {
-        if (!conveyorPrefab || !mainCamera || !GridGenerator.Instance)
+        if (!conveyorPrefab || !mainCamera || GridGenerator.Instance == null)
         {
             return;
         }
@@ -52,6 +55,7 @@ public class GridInteraction : MonoBehaviour
         var mouseScreenPos = Mouse.current.position.ReadValue();
         var mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
         var gridGenerator = GridGenerator.Instance;
+        mouseWorldPos.z = 0;
         var targetCell = gridGenerator.GetCell(mouseWorldPos);
         if (targetCell == null)
         {
@@ -65,16 +69,15 @@ public class GridInteraction : MonoBehaviour
             return;
         }
 
-        var overlayObject = Instantiate(
+        var spawnPosition = targetCell.WorldPosition;
+        spawnPosition.z = placedObjectZOffset;
+        var placedObject = Instantiate(
             conveyorPrefab,
-            targetCell.WorldPosition,
+            spawnPosition,
             Quaternion.identity,
             gridGenerator.placedObjectsContainer
         );
-        var position = overlayObject.transform.position;
-        position.z = -0.1f;
-        overlayObject.transform.position = position;
-        targetCell.SetPlacedObject(overlayObject);
+        targetCell.SetPlacedObject(placedObject);
         Debug.Log($"Размещен объект на ячейке: ({targetCell.GridPosition.x}, {targetCell.GridPosition.y})");
     }
 }

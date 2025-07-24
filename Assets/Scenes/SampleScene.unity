@@ -148,7 +148,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 208541a7e1dd4346bce05a57b8db0337, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  overlayPrefab: {fileID: 5544907828181699702, guid: 1b6549c3473f02e44ac0aea0983469bc, type: 3}
+  conveyorPrefab: {fileID: 5544907828181699702, guid: 1b6549c3473f02e44ac0aea0983469bc, type: 3}
+  placedObjectZOffset: -0.1
   mainCamera: {fileID: 519420031}
 --- !u!4 &106305424
 Transform:
@@ -197,7 +198,7 @@ MonoBehaviour:
   gridWidth: 100
   gridHeight: 100
   cellSize: 1
-  cellPrefab: {fileID: 5544907828181699702, guid: 9d02eb4f7a8db2041a1dd545a5aaf3b5, type: 3}
+  gridMaterial: {fileID: 2100000, guid: 3f0f667fe9ffc6848ae2bdc8de3a260b, type: 2}
   placedObjectsContainer: {fileID: 909488839}
 --- !u!4 &358586091
 Transform:

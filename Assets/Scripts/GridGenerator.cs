@@ -13,12 +13,10 @@ public class GridGenerator : MonoBehaviour
     public int gridHeight = 100;
     [Tooltip("Размер каждой ячейки")]
     public float cellSize = 1.0f;
-    [Header("Префабы и контейнеры")]
-    [Tooltip("Префаб, который будет использоваться для каждой ячейки сетки (земля)")]
-    public GameObject cellPrefab;
-    /// <summary>
-    /// Контейнер для всех визуальных объектов, размещаемых на сетке.
-    /// </summary>
+    [Header("Визуальное представление")]
+    [Tooltip("Материал, который будет использоваться для поверхности сетки (земли)")]
+    public Material gridMaterial;
+    [Header("Контейнеры")]
     [Tooltip("Трансформ, который будет родительским для всех размещаемых объектов")]
     public Transform placedObjectsContainer;
     /// <summary>
@@ -40,9 +38,9 @@ public class GridGenerator : MonoBehaviour
         }
 
         Instance = this;
-        if (!cellPrefab)
+        if (!gridMaterial)
         {
-            Debug.LogError("Ошибка: Префаб ячейки (cellPrefab) не назначен в инспекторе!");
+            Debug.LogError("Ошибка: Материал для сетки (gridMaterial) не назначен в инспекторе!");
             enabled = false;
             return;
         }
@@ -51,19 +49,11 @@ public class GridGenerator : MonoBehaviour
     }
 
     /// <summary>
-    /// Генерирует сетку на основе заданных параметров.
+    /// Генерирует логическую сетку и создает ее визуальное представление в виде единого меша.
     /// </summary>
     private void GenerateGrid()
     {
         _cellGrid = new Cell[gridWidth, gridHeight];
-        var gridContainer = new GameObject("GridContainer")
-        {
-            transform =
-            {
-                parent = transform
-            }
-        };
-
         if (!placedObjectsContainer)
         {
             placedObjectsContainer = new GameObject("PlacedObjectsContainer").transform;
@@ -75,18 +65,74 @@ public class GridGenerator : MonoBehaviour
             for (var y = 0; y < gridHeight; y++)
             {
                 var cellPosition = new Vector3(x * cellSize, y * cellSize, 0);
-                var groundTile = Instantiate(cellPrefab, cellPosition, Quaternion.identity);
-                groundTile.name = $"Cell_{x}_{y}";
-                groundTile.transform.parent = gridContainer.transform;
                 _cellGrid[x, y] = new Cell(cellPosition, new Vector2Int(x, y));
             }
         }
 
+        GenerateGridMesh();
         Debug.Log($"Сетка размером {gridWidth}x{gridHeight} успешно создана!");
     }
 
     /// <summary>
+    /// Создает единый меш для визуального отображения всей сетки.
+    /// </summary>
+    private void GenerateGridMesh()
+    {
+        var gridMeshObject = new GameObject("GridMesh")
+        {
+            transform =
+            {
+                parent = transform
+            }
+        };
+        var meshFilter = gridMeshObject.AddComponent<MeshFilter>();
+        var meshRenderer = gridMeshObject.AddComponent<MeshRenderer>();
+        meshRenderer.material = gridMaterial;
+        var mesh = new Mesh
+        {
+            name = "Procedural Grid"
+        };
+
+        var quadCount = gridWidth * gridHeight;
+        var vertices = new Vector3[quadCount * 4];
+        var uvs = new Vector2[quadCount * 4];
+        var triangles = new int[quadCount * 6];
+
+        for (var x = 0; x < gridWidth; x++)
+        {
+            for (var y = 0; y < gridHeight; y++)
+            {
+                var index = y * gridWidth + x; // Исправлен порядок индекса для соответствия циклам
+                var vIndex = index * 4;
+                var tIndex = index * 6;
+                var center = _cellGrid[x, y].WorldPosition;
+                vertices[vIndex + 0] = new Vector3(center.x - cellSize * 0.5f, center.y - cellSize * 0.5f, 0);
+                vertices[vIndex + 1] = new Vector3(center.x - cellSize * 0.5f, center.y + cellSize * 0.5f, 0);
+                vertices[vIndex + 2] = new Vector3(center.x + cellSize * 0.5f, center.y + cellSize * 0.5f, 0);
+                vertices[vIndex + 3] = new Vector3(center.x + cellSize * 0.5f, center.y - cellSize * 0.5f, 0);
+                uvs[vIndex + 0] = new Vector2(0, 0);
+                uvs[vIndex + 1] = new Vector2(0, 1);
+                uvs[vIndex + 2] = new Vector2(1, 1);
+                uvs[vIndex + 3] = new Vector2(1, 0);
+                triangles[tIndex + 0] = vIndex + 0;
+                triangles[tIndex + 1] = vIndex + 1;
+                triangles[tIndex + 2] = vIndex + 2;
+                triangles[tIndex + 3] = vIndex + 0;
+                triangles[tIndex + 4] = vIndex + 2;
+                triangles[tIndex + 5] = vIndex + 3;
+            }
+        }
+
+        mesh.vertices = vertices;
+        mesh.uv = uvs;
+        mesh.triangles = triangles;
+        mesh.RecalculateNormals();
+        meshFilter.mesh = mesh;
+    }
+
+    /// <summary>
     /// Преобразует мировую позицию в координаты ячейки на сетке.
+    /// ИСПОЛЬЗУЕТ ОКРУГЛЕНИЕ К БЛИЖАЙШЕМУ ЦЕЛОМУ.
     /// </summary>
     /// <param name="worldPosition">Позиция в мировых координатах.</param>
     /// <returns>Координаты ячейки (x, y) в виде Vector2Int.</returns>
