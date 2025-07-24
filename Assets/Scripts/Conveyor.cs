@@ -24,6 +24,8 @@ public class Conveyor : MonoBehaviour
     public Sprite cornerSprite;
     [Tooltip("Спрайт для Т-образного конвейера. Базовая ориентация - открыт Вверх, Влево и Вправо.")]
     public Sprite tJunctionSprite;
+    [Tooltip("Спрайт для крестового конвейера.")]
+    public Sprite crossSprite;
     private SpriteRenderer _spriteRenderer;
 
     private void Awake()
@@ -71,6 +73,19 @@ public class Conveyor : MonoBehaviour
         }
 
         transform.rotation = Quaternion.Euler(0, 0, angle);
+    }
+
+    /// <summary>
+    /// Устанавливает тип конвейера (крестовой).
+    /// </summary>
+    public void SetCross()
+    {
+        if (_spriteRenderer.sprite != crossSprite)
+        {
+            _spriteRenderer.sprite = crossSprite;
+        }
+
+        transform.rotation = Quaternion.identity;
     }
 
 

@@ -168,7 +168,11 @@ public class GridInteraction : MonoBehaviour
                 conveyor.SetTJunction(angle);
                 break;
             }
-            // TODO: Добавить логику для 4 соседей (крестовина)
+            case 4:
+            {
+                conveyor.SetCross();
+                break;
+            }
             default:
                 conveyor.SetStraight(Conveyor.Direction.Up);
                 break;
@@ -195,8 +199,8 @@ public class GridInteraction : MonoBehaviour
 
         if (missingDirection == Vector2Int.up) return 180f;
         if (missingDirection == Vector2Int.down) return 0f;
-        if (missingDirection == Vector2Int.left) return 90f;
-        if (missingDirection == Vector2Int.right) return -90f;
+        if (missingDirection == Vector2Int.left) return -90f;
+        if (missingDirection == Vector2Int.right) return 90f;
 
         return 0f;
     }
