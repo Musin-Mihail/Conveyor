@@ -3,7 +3,6 @@ using UnityEngine;
 
 /// <summary>
 /// Управляет состоянием, типом и ориентацией одного конвейера.
-/// Логика была переработана для использования битовой маски, что упрощает определение внешнего вида.
 /// </summary>
 [RequireComponent(typeof(SpriteRenderer))]
 public class Conveyor : MonoBehaviour
@@ -54,37 +53,32 @@ public class Conveyor : MonoBehaviour
         _conveyorTypes = new Dictionary<int, ConveyorType>
         {
             // Маска 0: Нет соединений (изолированный конвейер)
-            [0] = new(straightSprite, 0),
-            // Маска 1: Только вверх
-            [1] = new(straightSprite, 0),
-            // Маска 2: Только вниз
-            [2] = new(straightSprite, 180),
-            // Маска 3: Вверх и Вниз (прямой вертикальный)
-            [3] = new(straightSprite, 0),
-            // Маска 4: Только влево
-            [4] = new(straightSprite, 90),
-            // Маска 5: Вверх и Влево (угол)
-            [5] = new(cornerSprite, 90),
-            // Маска 6: Вниз и Влево (угол)
-            [6] = new(cornerSprite, 180),
-            // Маска 7: Вверх, Вниз, Влево (Т-образный)
-            [7] = new(tJunctionSprite, 90),
-            // Маска 8: Только вправо
-            [8] = new(straightSprite, -90),
-            // Маска 9: Вверх и Вправо (угол)
-            [9] = new(cornerSprite, 0),
-            // Маска 10: Вниз и Вправо (угол)
-            [10] = new(cornerSprite, -90),
-            // Маска 11: Вверх, Вниз, Вправо (Т-образный)
-            [11] = new(tJunctionSprite, -90),
-            // Маска 12: Влево и Вправо (прямой горизонтальный)
-            [12] = new(straightSprite, 90),
-            // Маска 13: Вверх, Влево, Вправо (Т-образный)
-            [13] = new(tJunctionSprite, 0),
-            // Маска 14: Вниз, Влево, Вправо (Т-образный)
-            [14] = new(tJunctionSprite, 180),
-            // Маска 15: Все 4 направления (крестовина)
-            [15] = new(crossSprite, 0)
+            [(int)DirectionFlags.None] = new(straightSprite, 0),
+
+            // 1 соединение
+            [(int)DirectionFlags.Up] = new(straightSprite, 0),
+            [(int)DirectionFlags.Down] = new(straightSprite, 180),
+            [(int)DirectionFlags.Left] = new(straightSprite, 90),
+            [(int)DirectionFlags.Right] = new(straightSprite, -90),
+
+            // 2 соединения (прямые)
+            [(int)(DirectionFlags.Up | DirectionFlags.Down)] = new(straightSprite, 0),
+            [(int)(DirectionFlags.Left | DirectionFlags.Right)] = new(straightSprite, 90),
+
+            // 2 соединения (угловые)
+            [(int)(DirectionFlags.Up | DirectionFlags.Right)] = new(cornerSprite, 0),
+            [(int)(DirectionFlags.Up | DirectionFlags.Left)] = new(cornerSprite, 90),
+            [(int)(DirectionFlags.Down | DirectionFlags.Left)] = new(cornerSprite, 180),
+            [(int)(DirectionFlags.Down | DirectionFlags.Right)] = new(cornerSprite, -90),
+
+            // 3 соединения (Т-образные)
+            [(int)(DirectionFlags.Up | DirectionFlags.Left | DirectionFlags.Right)] = new(tJunctionSprite, 0),
+            [(int)(DirectionFlags.Up | DirectionFlags.Down | DirectionFlags.Left)] = new(tJunctionSprite, 90),
+            [(int)(DirectionFlags.Down | DirectionFlags.Left | DirectionFlags.Right)] = new(tJunctionSprite, 180),
+            [(int)(DirectionFlags.Up | DirectionFlags.Down | DirectionFlags.Right)] = new(tJunctionSprite, -90),
+
+            // 4 соединения (крестовина)
+            [(int)(DirectionFlags.Up | DirectionFlags.Down | DirectionFlags.Left | DirectionFlags.Right)] = new(crossSprite, 0)
         };
     }
 

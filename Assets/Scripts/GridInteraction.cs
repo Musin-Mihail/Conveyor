@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Обрабатывает взаимодействие игрока с сеткой, например, размещение объектов.
 /// Взаимодействует с GridGenerator для получения информации о ячейках.
-/// Логика обновления конвейеров была переработана для использования битовых масок.
+/// Логика обновления конвейеров была переработана для использования DirectionFlags и цикла,
+/// что сделало код чище и надежнее.
 /// </summary>
 public class GridInteraction : MonoBehaviour
 {
@@ -111,7 +112,6 @@ public class GridInteraction : MonoBehaviour
     private void UpdateSurroundingConveyors(Cell centerCell)
     {
         UpdateSingleConveyorOrientation(centerCell);
-
         foreach (var neighborCell in _gridGenerator.GetNeighbors(centerCell).Where(neighborCell => neighborCell.IsOccupied))
         {
             UpdateSingleConveyorOrientation(neighborCell);
@@ -128,31 +128,16 @@ public class GridInteraction : MonoBehaviour
         var conveyor = cell.GetConveyor();
         if (!conveyor) return;
         var gridPos = cell.GridPosition;
-        var connectionMask = 0;
-        var neighborUp = _gridGenerator.GetCell(gridPos + Vector2Int.up);
-        if (neighborUp is { IsOccupied: true })
+        var connectionMask = DirectionFlags.None;
+        foreach (var (flag, offset) in ConveyorDirections.DirectionVectors)
         {
-            connectionMask |= 1;
+            var neighborCell = _gridGenerator.GetCell(gridPos + offset);
+            if (neighborCell is { IsOccupied: true })
+            {
+                connectionMask |= flag;
+            }
         }
 
-        var neighborDown = _gridGenerator.GetCell(gridPos + Vector2Int.down);
-        if (neighborDown is { IsOccupied: true })
-        {
-            connectionMask |= 2;
-        }
-
-        var neighborLeft = _gridGenerator.GetCell(gridPos + Vector2Int.left);
-        if (neighborLeft is { IsOccupied: true })
-        {
-            connectionMask |= 4;
-        }
-
-        var neighborRight = _gridGenerator.GetCell(gridPos + Vector2Int.right);
-        if (neighborRight is { IsOccupied: true })
-        {
-            connectionMask |= 8;
-        }
-
-        conveyor.UpdateState(connectionMask);
+        conveyor.UpdateState((int)connectionMask);
     }
 }
