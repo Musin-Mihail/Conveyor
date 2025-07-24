@@ -1,7 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Этот скрипт создает сетку из префабов и хранит ссылки на них.
+/// Этот скрипт создает сетку из префабов, хранит ссылки на них и предоставляет централизованный доступ к сетке.
+/// Реализован с использованием паттерна Singleton.
 /// </summary>
 public class GridGenerator : MonoBehaviour
 {
@@ -15,11 +16,29 @@ public class GridGenerator : MonoBehaviour
     [Header("Префаб")]
     [Tooltip("Префаб, который будет использоваться для каждой ячейки сетки (земля)")]
     public GameObject cellPrefab;
-    public static GameObject[,] Grid;
-    public static float CellSize { get; private set; }
+    /// <summary>
+    /// Статический экземпляр для доступа к GridGenerator из других скриптов.
+    /// </summary>
+    public static GridGenerator Instance { get; private set; }
+    /// <summary>
+    /// Двумерный массив, хранящий все ячейки сетки.
+    /// </summary>
+    public GameObject[,] Grid { get; private set; }
+    /// <summary>
+    /// Размер ячейки сетки.
+    /// </summary>
+    private float CellSize { get; set; }
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Обнаружен еще один экземпляр GridGenerator. Новый экземпляр будет удален.");
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
         if (!cellPrefab)
         {
             Debug.LogError("Ошибка: Префаб ячейки (cellPrefab) не назначен в инспекторе!");
@@ -56,5 +75,30 @@ public class GridGenerator : MonoBehaviour
         }
 
         Debug.Log($"Сетка размером {gridWidth}x{gridHeight} успешно создана!");
+    }
+
+    /// <summary>
+    /// Преобразует мировую позицию в координаты ячейки на сетке.
+    /// </summary>
+    /// <param name="worldPosition">Позиция в мировых координатах.</param>
+    /// <returns>Координаты ячейки (x, y) в виде Vector2Int.</returns>
+    public Vector2Int WorldToGridPosition(Vector3 worldPosition)
+    {
+        var shiftedX = worldPosition.x + CellSize / 2f;
+        var shiftedY = worldPosition.y + CellSize / 2f;
+        var x = Mathf.FloorToInt(shiftedX / CellSize);
+        var y = Mathf.FloorToInt(shiftedY / CellSize);
+        return new Vector2Int(x, y);
+    }
+
+    /// <summary>
+    /// Проверяет, находятся ли указанные координаты в пределах сетки.
+    /// </summary>
+    /// <param name="gridPosition">Координаты ячейки (x, y).</param>
+    /// <returns>True, если координаты находятся в пределах сетки, иначе false.</returns>
+    public bool IsValidGridPosition(Vector2Int gridPosition)
+    {
+        return gridPosition.x >= 0 && gridPosition.x < gridWidth &&
+               gridPosition.y >= 0 && gridPosition.y < gridHeight;
     }
 }
