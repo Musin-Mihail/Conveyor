@@ -2,15 +2,14 @@
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Обрабатывает клики мыши по сетке и размещает объекты на ячейках,
-/// используя новую систему ввода (Input System).
-/// Взаимодействует с GridGenerator через его экземпляр (Singleton).
+/// Обрабатывает взаимодействие игрока с сеткой, например, размещение объектов.
+/// Взаимодействует с GridGenerator для получения информации о ячейках.
 /// </summary>
 public class GridInteraction : MonoBehaviour
 {
     [Header("Настройки")]
-    [Tooltip("Префаб объекта, который будет размещаться поверх ячейки (ваш дополнительный спрайт)")]
-    public GameObject overlayPrefab;
+    [Tooltip("Префаб объекта, который будет размещаться на ячейке")]
+    public GameObject conveyorPrefab;
     [Tooltip("Ссылка на основную камеру. Если не указать, будет найдена автоматически")]
     public Camera mainCamera;
 
@@ -22,48 +21,60 @@ public class GridInteraction : MonoBehaviour
             if (!mainCamera)
             {
                 Debug.LogError("Камера не найдена! Убедитесь, что у вас есть камера с тегом 'MainCamera' или назначьте ее вручную в инспекторе.");
+                enabled = false;
+                return;
             }
         }
 
-        if (!overlayPrefab)
-        {
-            Debug.LogError("Префаб для наложения (overlayPrefab) не назначен в инспекторе!");
-        }
+        if (conveyorPrefab) return;
+        Debug.LogError("Префаб для наложения (conveyorPrefab) не назначен в инспекторе!");
+        enabled = false;
     }
 
     private void Update()
     {
-        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame && overlayPrefab && mainCamera && GridGenerator.Instance)
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             HandleMouseClick();
         }
     }
 
     /// <summary>
-    /// Обрабатывает клик мыши, определяет ячейку и размещает на ней объект.
+    /// Обрабатывает клик мыши, определяет ячейку и размещает на ней объект, если она свободна.
     /// </summary>
     private void HandleMouseClick()
     {
+        if (!conveyorPrefab || !mainCamera || !GridGenerator.Instance)
+        {
+            return;
+        }
+
         var mouseScreenPos = Mouse.current.position.ReadValue();
         var mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
-        mouseWorldPos.z = 0;
         var gridGenerator = GridGenerator.Instance;
-        var gridPos = gridGenerator.WorldToGridPosition(mouseWorldPos);
-        if (!gridGenerator.IsValidGridPosition(gridPos))
+        var targetCell = gridGenerator.GetCell(mouseWorldPos);
+        if (targetCell == null)
         {
             Debug.Log("Клик за пределами сетки.");
             return;
         }
 
-        var targetCell = gridGenerator.Grid[gridPos.x, gridPos.y];
-        if (targetCell.transform.childCount > 0)
+        if (targetCell.IsOccupied)
         {
-            Debug.Log($"Ячейка ({gridPos.x}, {gridPos.y}) уже занята.");
+            Debug.Log($"Ячейка ({targetCell.GridPosition.x}, {targetCell.GridPosition.y}) уже занята.");
             return;
         }
 
-        var overlayObject = Instantiate(overlayPrefab, targetCell.transform.position, Quaternion.identity, targetCell.transform);
-        overlayObject.transform.localPosition = new Vector3(0, 0, -0.1f);
-        Debug.Log($"Размещен объект на ячейке: ({gridPos.x}, {gridPos.y})");
+        var overlayObject = Instantiate(
+            conveyorPrefab,
+            targetCell.WorldPosition,
+            Quaternion.identity,
+            gridGenerator.placedObjectsContainer
+        );
+        var position = overlayObject.transform.position;
+        position.z = -0.1f;
+        overlayObject.transform.position = position;
+        targetCell.SetPlacedObject(overlayObject);
+        Debug.Log($"Размещен объект на ячейке: ({targetCell.GridPosition.x}, {targetCell.GridPosition.y})");
     }
 }
